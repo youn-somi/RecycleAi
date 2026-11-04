@@ -1,11 +1,10 @@
-
-# streamlit_app.py — 기존 RecycleAI.py를 활용한 배포용 화면
+# streamlit_app.py — 배포용 화면 (독립 실행형)
 
 import streamlit as st
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+import numpy as np
 from PIL import Image
-
-# 기존 RecycleAI.py의 AI 모델과 예측 함수를 가져오기
-from RecycleAI import model, CLASS_NAMES, predictphoto
 
 # 웹페이지 설정
 st.set_page_config(
@@ -86,7 +85,38 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 웹페이지 화면
+# AI 모델 캐시 로드 (recycle_model.keras 파일 직접 불러오기)
+@st.cache_resource
+def load_ai_model():
+    return load_model("recycle_model.keras")
+
+try:
+    model = load_ai_model()
+except Exception as e:
+    st.error(f"모델 로드 중 오류 발생: {e}")
+
+# 클래스 이름 정의 (학습시킨 순서에 맞게 수정 필요시 변경)
+CLASS_NAMES = ["캔류", "플라스틱류", "종이류", "유리류", "비닐류", "일반쓰레기"]
+
+def predictphoto(uploaded_file):
+    img = Image.open(uploaded_file).convert("RGB")
+    img = img.resize((224, 224))  # 모델 크기에 맞춤
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = img_array / 255.0
+    
+    predictions = model.predict(img_array)
+    predicted_class_idx = np.argmax(predictions[0])
+    confidence = float(np.max(predictions[0])) * 100
+    
+    if predicted_class_idx < len(CLASS_NAMES):
+        result_name = CLASS_NAMES[predicted_class_idx]
+    else:
+        result_name = f"클래스 {predicted_class_idx}"
+        
+    return result_name, round(confidence, 2)
+
+# 웹페이지 화면 구성
 with st.container(border=True):
 
     st.markdown("<h1>♻️ RecycleAI</h1>", unsafe_allow_html=True)
@@ -109,11 +139,12 @@ with st.container(border=True):
         preview = Image.open(uploaded_file).convert("RGB")
         st.image(preview, use_container_width=True)
 
-        # AI 분류 실행
+        # AI 분류 실행 버튼
         if st.button("분류하기"):
 
             uploaded_file.seek(0)
 
-            result, prob = predictphoto(uploaded_file)
+            with st.spinner("AI가 분석 중입니다..."):
+                result, prob = predictphoto(uploaded_file)
 
-            st.success(f"AI 분석 결과: {result} ({prob}%)")
+            st.success(f"AI 분석 결과: **{result}** ({prob}%)")
