@@ -96,11 +96,11 @@ except Exception as e:
     st.error(f"모델 로드 중 오류 발생: {e}")
 
 # 클래스 이름 정의 (학습시킨 순서에 맞게 수정 필요시 변경)
-CLASS_NAMES = ["캔류", "플라스틱류", "종이류", "유리류", "비닐류", "일반쓰레기"]
+CLASS_NAMES = ['종이상자', '유리', '금속', '종이', '플라스틱', '일반쓰레기']  # ✅
 
 def predictphoto(uploaded_file):
     img = Image.open(uploaded_file).convert("RGB")
-    img = img.resize((224, 224))  # 모델 크기에 맞춤
+    img = img.resize((128, 128))  # 모델 크기에 맞춤
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
     img_array = img_array / 255.0
